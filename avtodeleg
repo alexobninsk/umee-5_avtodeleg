@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# set -x
+WALLET1="BASE_WALLET_ADDRESS"
+WALLET2="DOP_WALLET_ADDRESS"
+WALLET3="DOP_WALLET_ADDRESS"
+VALOPER="VALOPER_ADDRESS"
+PASSWORD="WALLET_PASSWORD"
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+DELAY=86410 #in secs - how often restart the script
+
+for (( ;; )); do
+# Withdraw 
+echo Withdraw
+
+echo -e "${PASSWORD} \n" | umeed tx distribution withdraw-all-rewards --gas auto --chain-id $UMEE_CHAIN --from $UMEE_WALLET --fees=1000uumee -y
+
+
+#send from WALLET2 to WALLET1
+
+echo send from WALLET2 to WALLET1
+
+FUNDS1=$(umeed query bank balances ${WALLET2} --output json | jq -r '.balances | map(select(.denom == "uumee")) | .[].amount')
+
+COUNT1=$(($FUNDS1-100000))
+
+echo -e "${PASSWORD} \n" | umeed tx bank send ${WALLET2} ${WALLET1} "$COUNT1"uumee --gas auto --chain-id $UMEE_CHAIN --fees=1000uumee -y
+
+
+#send from WALLET3 to WALLET1
+
+echo send from WALLET3 to WALLET1
+
+FUNDS2=$(umeed query bank balances ${WALLET3} --output json | jq -r '.balances | map(select(.denom == "uumee")) | .[].amount')
+
+COUNT2=$(($FUNDS2-100000))
+
+echo -e "${PASSWORD} \n" | umeed tx bank send ${WALLET3} ${WALLET1} "$COUNT2"uumee --gas auto --chain-id $UMEE_CHAIN --fees=1000uumee -y
+
+#SLEEP 30 sec
+
+echo SLEEP 30 sec
+
+sleep 30
+
+# Grab current account funds formated as "12345uumee"
+
+FUNDS=$(umeed query bank balances ${WALLET1} --output json | jq -r '.balances | map(select(.denom == "uumee")) | .[].amount')
+
+#Minus 100000
+COUNT=$(($FUNDS-1000000))
+
+
+# Delegate it back
+echo -e "${PASSWORD} \n" | umeed tx staking delegate ${VALOPER}  "$COUNT"uumee --gas auto --chain-id $UMEE_CHAIN --from $UMEE_WALLET --fees=1000uumee -y
+
+
+
+
+
+for (( timer=${DELAY}; timer>0; timer-- ))
+       do
+                printf "* sleep for ${RED}%02d${NC} sec\r" $timer
+                sleep 1
+        done
+done
